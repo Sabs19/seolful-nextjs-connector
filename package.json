@@ -1,0 +1,58 @@
+{
+  "name": "@seolful/next",
+  "version": "1.0.0",
+  "description": "Seolful SEO connector for Next.js — self-sufficient site auditing, fix publishing, and metadata injection",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "import": "./dist/api.js"
+    }
+  },
+  "bin": {
+    "seolful-next": "./bin/seolful-next.mjs"
+  },
+  "files": [
+    "dist/",
+    "bin/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "next": ">=14.0.0",
+    "react": ">=18.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "node-html-parser": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "typescript": "^5"
+  },
+  "keywords": [
+    "seolful",
+    "seo",
+    "nextjs",
+    "next",
+    "audit",
+    "metadata",
+    "connector"
+  ],
+  "license": "MIT"
+}
