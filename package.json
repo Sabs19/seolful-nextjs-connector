@@ -1,5 +1,5 @@
 {
-  "name": "@seolful/next",
+  "name": "@seolful/nextjs-connector",
   "version": "1.0.0",
   "description": "Seolful SEO connector for Next.js — self-sufficient site auditing, fix publishing, and metadata injection",
   "type": "module",
@@ -54,5 +54,8 @@
     "metadata",
     "connector"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
