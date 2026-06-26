@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createInterface } from 'node:readline/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -198,3 +199,5 @@ export async function init(): Promise<void> {
     process.exit(1)
   }
 }
+
+init()
