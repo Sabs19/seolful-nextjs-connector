@@ -24,7 +24,7 @@ export function updateGitignore(cwd: string): void {
 }
 
 export function scaffoldApiRoute(cwd: string): string {
-  const routeContent = `export { GET, POST } from '@seolful/next/api'
+  const routeContent = `export { GET, POST } from '@seolful/nextjs-connector/api'
 `
 
   // Detect src/ directory usage
@@ -68,7 +68,7 @@ export function injectIntoLayout(cwd: string): string | null {
   let content = readFileSync(layoutPath, 'utf8')
 
   // Already injected
-  if (content.includes('@seolful/next') || content.includes('withSeolfulMetadata')) {
+  if (content.includes('@seolful/nextjs-connector') || content.includes('withSeolfulMetadata')) {
     return null
   }
 
@@ -83,7 +83,7 @@ export function injectIntoLayout(cwd: string): string | null {
     const fullMatch = staticMetadataMatch[0]
 
     // Add the import
-    const seolfulImport = `import { withSeolfulMetadata } from '@seolful/next'\n`
+    const seolfulImport = `import { withSeolfulMetadata } from '@seolful/nextjs-connector'\n`
 
     // Check if there's already an import from 'next' for Metadata type
     if (content.includes("import type { Metadata }")) {

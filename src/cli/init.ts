@@ -187,7 +187,7 @@ export async function init(): Promise<void> {
     if (!layoutModified) {
       console.log('  Note: Could not auto-modify your root layout.')
       console.log('  Add this to your layout.tsx generateMetadata:')
-      console.log('    import { withSeolfulMetadata } from \'@seolful/next\'')
+      console.log('    import { withSeolfulMetadata } from \'@seolful/nextjs-connector\'')
       console.log()
     }
     console.log('  Seolful is ready — start your dev server and trigger a sync from the dashboard.')
