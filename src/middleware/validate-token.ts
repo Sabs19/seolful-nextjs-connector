@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { getStorage } from '../storage/index.js'
+import { ensureRegistered } from '../auto-register.js'
 
 export async function validateToken(
   headers: Headers,
@@ -11,7 +12,7 @@ export async function validateToken(
     return { valid: false, status: 401, error: 'Unauthorized' }
   }
 
-  // In Vercel/serverless, env vars are the source of truth for auth
+  // Legacy env vars (explicit client_id + token)
   const envClientId = process.env.SEOLFUL_CLIENT_ID
   const envToken = process.env.SEOLFUL_TOKEN
   if (envClientId && envToken) {
@@ -19,6 +20,11 @@ export async function validateToken(
       return { valid: true }
     }
     return { valid: false, status: 401, error: 'Unauthorized' }
+  }
+
+  // SEOLFUL_KEY: auto-register on first request if not yet connected
+  if (process.env.SEOLFUL_KEY) {
+    await ensureRegistered()
   }
 
   const storage = getStorage()
