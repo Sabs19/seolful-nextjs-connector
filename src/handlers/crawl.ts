@@ -8,5 +8,6 @@ export async function crawlHandler(): Promise<Response> {
     crawled: result.crawled,
     failed: result.failed,
     total: result.total,
+    discovery_method: result.discoveryMethod,
   })
 }
