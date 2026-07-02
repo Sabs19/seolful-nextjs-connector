@@ -2,24 +2,17 @@
 import { createInterface } from 'node:readline/promises'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { randomBytes } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { performHandshake } from './handshake.js'
 import { writeEnvLocal, updateGitignore, scaffoldApiRoute, injectIntoLayout } from './scaffold.js'
 
-function randomString(length: number): string {
-  return randomBytes(Math.ceil(length / 2))
-    .toString('hex')
-    .slice(0, length)
-}
-
-function decodeConnectionKey(key: string): { url: string; tok: string } | null {
+function decodeConnectionKey(key: string): { url: string; id: string; tok: string } | null {
   try {
     const padded = key.replace(/-/g, '+').replace(/_/g, '/')
     const json = Buffer.from(padded, 'base64').toString('utf8')
     const decoded = JSON.parse(json)
     if (!decoded.url) return null
-    return { url: decoded.url.replace(/\/$/, ''), tok: decoded.tok ?? '' }
+    return { url: decoded.url.replace(/\/$/, ''), id: decoded.id ?? '', tok: decoded.tok ?? '' }
   } catch {
     return null
   }
@@ -87,6 +80,10 @@ export async function init(): Promise<void> {
       console.error('\n  ✖ Invalid connection key. Copy a fresh one from your Seolful dashboard.\n')
       process.exit(1)
     }
+    if (!decoded.id || !decoded.tok) {
+      console.error('\n  ✖ This connection key is in an old format. Copy a fresh one from your Seolful dashboard.\n')
+      process.exit(1)
+    }
 
     // Step 2: Get site URL
     const defaultUrl =
@@ -114,9 +111,10 @@ export async function init(): Promise<void> {
     console.log(`  Site name:    ${siteName}`)
     console.log()
 
-    // Step 4: Generate credentials
-    const clientId = randomString(12)
-    const token = randomString(40)
+    // Step 4: Credentials — the app mints client_id/token up front and hands
+    // them to us via the connection key, so we no longer invent our own.
+    const clientId = decoded.id
+    const token = decoded.tok
 
     // Step 5: Handshake
     process.stdout.write('  Connecting to Seolful... ')

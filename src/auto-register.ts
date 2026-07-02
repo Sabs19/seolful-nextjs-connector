@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,17 +7,13 @@ import { performHandshake } from './cli/handshake.js'
 
 let registering: Promise<void> | null = null
 
-function randomString(length: number): string {
-  return randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length)
-}
-
-function decodeKey(key: string): { url: string; tok: string } | null {
+export function decodeKey(key: string): { url: string; id: string; tok: string } | null {
   try {
     const padded = key.replace(/-/g, '+').replace(/_/g, '/')
     const json = Buffer.from(padded, 'base64').toString('utf8')
     const decoded = JSON.parse(json)
     if (!decoded.url) return null
-    return { url: decoded.url.replace(/\/$/, ''), tok: decoded.tok ?? '' }
+    return { url: decoded.url.replace(/\/$/, ''), id: decoded.id ?? '', tok: decoded.tok ?? '' }
   } catch {
     return null
   }
@@ -65,9 +60,16 @@ export async function ensureRegistered(): Promise<boolean> {
 async function doRegister(key: string, storage: Awaited<ReturnType<typeof getStorage>>): Promise<void> {
   const decoded = decodeKey(key)
   if (!decoded) throw new Error('Invalid SEOLFUL_KEY')
+  if (!decoded.id || !decoded.tok) {
+    throw new Error('This connection key is in an old format — copy a fresh one from your Seolful dashboard.')
+  }
 
-  const clientId = randomString(12)
-  const token = randomString(40)
+  // The app mints client_id/token up front and hands them to us via the
+  // connection key — we no longer invent our own, which is what lets the
+  // SEOLFUL_KEY-based auth check in validate-token.ts work without ever
+  // reading from local (and on serverless, ephemeral) storage.
+  const clientId = decoded.id
+  const token = decoded.tok
 
   const siteUrl = process.env.SEOLFUL_SITE_URL
     || `http://localhost:${process.env.PORT || 3000}`
