@@ -5,6 +5,13 @@ import { ensureRegistered } from '../auto-register.js'
 export async function validateToken(
   headers: Headers,
 ): Promise<{ valid: true } | { valid: false; status: number; error: string }> {
+  // SEOLFUL_KEY: registration normally happens on server startup via the
+  // instrumentation.ts hook, but attempt it here too as a fallback in case
+  // that hook isn't wired up in this deployment (or hasn't finished yet).
+  if (process.env.SEOLFUL_KEY) {
+    await ensureRegistered()
+  }
+
   const token = headers.get('x-seolful-token')
   const clientId = headers.get('x-seolful-client-id')
 
@@ -20,11 +27,6 @@ export async function validateToken(
       return { valid: true }
     }
     return { valid: false, status: 401, error: 'Unauthorized' }
-  }
-
-  // SEOLFUL_KEY: auto-register on first request if not yet connected
-  if (process.env.SEOLFUL_KEY) {
-    await ensureRegistered()
   }
 
   const storage = getStorage()

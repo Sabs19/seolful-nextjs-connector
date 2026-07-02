@@ -43,6 +43,27 @@ export function scaffoldApiRoute(cwd: string): string {
   return relative
 }
 
+export function scaffoldInstrumentation(cwd: string): string | null {
+  const useSrc = existsSync(join(cwd, 'src', 'app'))
+  const baseDir = useSrc ? join(cwd, 'src') : cwd
+
+  // Don't clobber an existing instrumentation file (e.g. one set up for Sentry).
+  const alreadyExists = ['ts', 'js'].some((ext) => existsSync(join(baseDir, `instrumentation.${ext}`)))
+  if (alreadyExists) return null
+
+  const content = `export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { ensureRegistered } = await import('@seolful/nextjs-connector')
+    await ensureRegistered()
+  }
+}
+`
+
+  writeFileSync(join(baseDir, 'instrumentation.ts'), content)
+
+  return useSrc ? 'src/instrumentation.ts' : 'instrumentation.ts'
+}
+
 export function putFile(filePath: string, content: string): void {
   const dir = dirname(filePath)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })

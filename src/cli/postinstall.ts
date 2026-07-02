@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { scaffoldInstrumentation } from './scaffold.js'
 
 function findProjectRoot(): string | null {
   // npm/yarn/pnpm set INIT_CWD to the directory where the install was run
@@ -49,4 +50,10 @@ function scaffoldRoute(cwd: string): void {
 const root = findProjectRoot()
 if (root && isNextJsProject(root)) {
   scaffoldRoute(root)
+
+  const instrumentationPath = scaffoldInstrumentation(root)
+  if (instrumentationPath) {
+    console.log(`  seolful: created ${instrumentationPath}`)
+    console.log('  seolful: on Next.js 13.4–14, add `experimental: { instrumentationHook: true }` to next.config.js\n')
+  }
 }

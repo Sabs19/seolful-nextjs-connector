@@ -16,6 +16,9 @@ export { getConfig, getStorageDir, clearConfigCache } from './config.js'
 export { getStorage, setStorage } from './storage/index.js'
 export { FileAdapter } from './storage/file-adapter.js'
 
+// Auto-registration (called from the consumer's instrumentation.ts)
+export { ensureRegistered } from './auto-register.js'
+
 // Helpers — user-facing
 export { getPageSeo } from './helpers/get-page-seo.js'
 export { withSeolfulMetadata } from './helpers/generate-metadata.js'
