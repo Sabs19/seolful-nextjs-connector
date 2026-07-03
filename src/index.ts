@@ -7,7 +7,7 @@ export type {
   StorageAdapter,
 } from './types.js'
 
-export { getPageRole } from './types.js'
+export { getPageRole, getContentType } from './types.js'
 
 // Config
 export { getConfig, getStorageDir, clearConfigCache } from './config.js'

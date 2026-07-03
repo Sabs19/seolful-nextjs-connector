@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getStorage } from '../storage/index.js'
-import { getPageRole } from '../types.js'
+import { getPageRole, getContentType } from '../types.js'
 
 const PER_PAGE = 75
 
@@ -20,6 +20,7 @@ export async function auditDataHandler(request: NextRequest): Promise<Response> 
       post_id: p.id,
       title: p.title,
       meta_description: p.metaDescription,
+      type: getContentType(p),
       page_role: getPageRole(p),
       h1_in_content: p.h1Count > 1,
       h1_text: p.h1Count > 1 ? p.h1Secondary : null,

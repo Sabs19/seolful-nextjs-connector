@@ -83,7 +83,25 @@ const UTILITY_SUBSTRING = [
   'coming-soon', 'maintenance', '404',
 ]
 
-export function getPageRole(page: SeoPage): 'content' | 'legal' | 'utility' {
+const PRODUCT_SECTIONS = new Set(['product', 'products', 'shop', 'store', 'item', 'items'])
+const POST_SECTIONS = new Set(['blog', 'post', 'posts', 'news', 'article', 'articles', 'insights'])
+
+function firstSegment(slug: string): string {
+  const clean = (slug ?? '').toLowerCase().replace(/^\/|\/$/g, '')
+  return clean === '' ? '' : clean.split('/')[0]
+}
+
+function hasDetailSegment(slug: string): boolean {
+  const clean = (slug ?? '').toLowerCase().replace(/^\/|\/$/g, '')
+  return clean !== '' && clean.includes('/')
+}
+
+/**
+ * Classify a page as 'content', 'legal', 'utility', or 'product'. Next.js sites have no
+ * native post-type field like a CMS would, so 'product' is inferred from URL shape
+ * (e.g. /products/foo) rather than read from structured data.
+ */
+export function getPageRole(page: SeoPage): 'content' | 'legal' | 'utility' | 'product' {
   const slug = (page.slug ?? '').toLowerCase().replace(/^\/|\/$/g, '')
   const lastSegment = slug.split('/').pop() ?? ''
 
@@ -91,7 +109,22 @@ export function getPageRole(page: SeoPage): 'content' | 'legal' | 'utility' {
   if (LEGAL_SUBSTRING.some((p) => lastSegment.includes(p))) return 'legal'
   if (UTILITY_EXACT.has(lastSegment)) return 'utility'
   if (UTILITY_SUBSTRING.some((p) => lastSegment.includes(p))) return 'utility'
+  if (hasDetailSegment(slug) && PRODUCT_SECTIONS.has(firstSegment(slug))) return 'product'
   if ((page.wordCount ?? 0) < 50) return 'utility'
 
   return 'content'
+}
+
+/**
+ * Classify a page as 'post', 'product', or 'page' for content-type grouping in the
+ * SaaS dashboard (as opposed to getPageRole(), which governs which audit rules apply).
+ */
+export function getContentType(page: SeoPage): 'post' | 'product' | 'page' {
+  const role = getPageRole(page)
+  if (role === 'product') return 'product'
+
+  const slug = (page.slug ?? '').toLowerCase().replace(/^\/|\/$/g, '')
+  if (hasDetailSegment(slug) && POST_SECTIONS.has(firstSegment(slug))) return 'post'
+
+  return 'page'
 }
