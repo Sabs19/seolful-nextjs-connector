@@ -4,7 +4,13 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { performHandshake } from './handshake.js'
-import { writeEnvLocal, updateGitignore, scaffoldApiRoute, injectIntoLayout } from './scaffold.js'
+import {
+  writeEnvLocal,
+  updateGitignore,
+  scaffoldApiRoute,
+  injectIntoLayout,
+  scaffoldOverridesFile,
+} from './scaffold.js'
 
 function decodeConnectionKey(key: string): { url: string; id: string; tok: string } | null {
   try {
@@ -172,7 +178,10 @@ export async function init(): Promise<void> {
     // Step 10: Update .gitignore
     updateGitignore(cwd)
 
-    // Step 11: Success
+    // Step 11: Scaffold the overrides file — this one gets committed, not ignored
+    const overridesPath = scaffoldOverridesFile(cwd)
+
+    // Step 12: Success
     console.log()
     console.log('  ✔ .env.local updated')
     console.log('  ✔ .seolful/ created')
@@ -181,6 +190,9 @@ export async function init(): Promise<void> {
       console.log(`  ✔ ${layoutModified} — auto-injection enabled`)
     }
     console.log('  ✔ .gitignore updated')
+    if (overridesPath) {
+      console.log(`  ✔ ${overridesPath} created — commit this file, published fixes land here`)
+    }
     console.log()
     if (!layoutModified) {
       console.log('  Note: Could not auto-modify your root layout.')
@@ -189,6 +201,8 @@ export async function init(): Promise<void> {
       console.log()
     }
     console.log('  Seolful is ready — start your dev server and trigger a sync from the dashboard.')
+    console.log('  To enable publishing, connect your GitHub repo from the Seolful dashboard:')
+    console.log('  fixes arrive as a pull request against seolful.overrides.json, not live writes.')
     console.log()
   } catch (error) {
     rl.close()

@@ -23,6 +23,19 @@ export function updateGitignore(cwd: string): void {
   }
 }
 
+/**
+ * seolful.overrides.json holds published fixes and must be committed —
+ * the Seolful GitHub App opens PRs against it. Deliberately NOT added to
+ * .gitignore alongside .seolful/, which is local crawl cache only.
+ */
+export function scaffoldOverridesFile(cwd: string): string | null {
+  const overridesPath = join(cwd, 'seolful.overrides.json')
+  if (existsSync(overridesPath)) return null
+
+  writeFileSync(overridesPath, JSON.stringify({}, null, 2) + '\n')
+  return 'seolful.overrides.json'
+}
+
 export function scaffoldApiRoute(cwd: string): string {
   const routeContent = `export { GET, POST } from '@seolful/nextjs-connector/api'
 `

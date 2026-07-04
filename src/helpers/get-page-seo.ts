@@ -1,12 +1,31 @@
-import { getStorage } from '../storage/index.js'
-import { getConfig } from '../config.js'
-import type { SeoPage } from '../types.js'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import type { SeoOverride, SeoOverridesFile } from '../types.js'
 
-export async function getPageSeo(pathname: string): Promise<SeoPage | null> {
-  const config = getConfig()
-  const siteUrl = config.siteUrl.replace(/\/$/, '')
-  const fullUrl = siteUrl + pathname
+const OVERRIDES_FILENAME = 'seolful.overrides.json'
 
-  const storage = getStorage()
-  return storage.getPageByUrl(fullUrl)
+let cached: SeoOverridesFile | null = null
+
+/**
+ * Fixes are committed to seolful.overrides.json by the Seolful GitHub App
+ * (via a PR the customer merges) rather than written at request time —
+ * reading a file bundled into the deployment is safe on Vercel's read-only
+ * filesystem, unlike the runtime writes this used to depend on.
+ */
+function loadOverrides(): SeoOverridesFile {
+  if (cached) return cached
+
+  try {
+    const raw = readFileSync(join(process.cwd(), OVERRIDES_FILENAME), 'utf8')
+    cached = JSON.parse(raw) as SeoOverridesFile
+  } catch {
+    cached = {}
+  }
+
+  return cached
+}
+
+export async function getPageSeo(pathname: string): Promise<SeoOverride | null> {
+  const overrides = loadOverrides()
+  return overrides[pathname] ?? null
 }

@@ -3,6 +3,8 @@ export type {
   SeolfulConfig,
   SeolfulConnection,
   SeoPage,
+  SeoOverride,
+  SeoOverridesFile,
   ImageAlt,
   StorageAdapter,
 } from './types.js'

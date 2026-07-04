@@ -45,6 +45,21 @@ export interface SeoPage {
   crawledAt: string | null
 }
 
+/**
+ * A published fix for one page, keyed by pathname in seolful.overrides.json.
+ * Distinct from SeoPage: this is committed-to-git fix data (write side),
+ * SeoPage is the crawl cache (read side) and stays in KvAdapter/FileAdapter.
+ */
+export interface SeoOverride {
+  title?: string
+  metaDescription?: string
+  structuredData?: object[]
+  demoteH1?: boolean
+  imageAlts?: ImageAlt[]
+}
+
+export type SeoOverridesFile = Record<string, SeoOverride>
+
 export interface StorageAdapter {
   getConnection(): Promise<SeolfulConnection | null>
   saveConnection(conn: SeolfulConnection): Promise<void>

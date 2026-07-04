@@ -55,8 +55,10 @@ function warnIfNoRedisOnVercel(): void {
   )
 
   if (onVercel && !hasRedis) {
-    console.log('\n  seolful: no Redis detected — crawled page data will be stored in /tmp,')
-    console.log('  seolful: which Vercel does not guarantee to persist between requests.')
+    console.log('\n  seolful: no Redis detected — crawled page data (used for audits) will be')
+    console.log('  seolful: stored in /tmp, which Vercel does not guarantee to persist between')
+    console.log('  seolful: requests. This only affects audit freshness, not published fixes —')
+    console.log('  seolful: those are committed to seolful.overrides.json via a GitHub PR.')
     console.log('  seolful: add a Redis integration (Vercel Marketplace → Upstash Redis) for reliable audits.\n')
   }
 }

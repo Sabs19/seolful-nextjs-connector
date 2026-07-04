@@ -1,7 +1,7 @@
 {
   "name": "@seolful/nextjs-connector",
-  "version": "2.3.0",
-  "description": "Seolful SEO connector for Next.js — self-sufficient site auditing, fix publishing, and metadata injection",
+  "version": "3.0.0",
+  "description": "Seolful SEO connector for Next.js — self-sufficient site auditing and metadata injection; fixes are published via a GitHub PR, not runtime writes",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
