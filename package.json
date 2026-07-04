@@ -1,7 +1,7 @@
 {
   "name": "@seolful/nextjs-connector",
-  "version": "3.0.0",
-  "description": "Seolful SEO connector for Next.js — self-sufficient site auditing and metadata injection; fixes are published via a GitHub PR, not runtime writes",
+  "version": "4.0.0",
+  "description": "Seolful metadata injection helpers for Next.js — reads seolful.overrides.json (published via the Seolful GitHub App) into generateMetadata, image alt text, structured data, and H1 tags. No API routes, no auth, no site-side crawling — auditing happens externally from the Seolful app.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,10 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./api": {
-      "types": "./dist/api.d.ts",
-      "import": "./dist/api.js"
     }
   },
   "bin": {
@@ -23,8 +19,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch",
-    "postinstall": "node dist/cli/postinstall.js || true"
+    "dev": "tsc --watch"
   },
   "engines": {
     "node": ">=18"
@@ -33,13 +28,7 @@
     "next": ">=14.0.0",
     "react": ">=18.0.0"
   },
-  "dependencies": {
-    "@upstash/redis": "^1.38.0",
-    "bcryptjs": "^2.4.3",
-    "node-html-parser": "^6.1.0"
-  },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "next": "^15.0.0",
@@ -51,7 +40,6 @@
     "seo",
     "nextjs",
     "next",
-    "audit",
     "metadata",
     "connector"
   ],

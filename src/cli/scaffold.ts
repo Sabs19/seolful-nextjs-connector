@@ -1,32 +1,9 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-
-export function writeEnvLocal(cwd: string, key: string, value: string): void {
-  const envPath = join(cwd, '.env.local')
-  let contents = existsSync(envPath) ? readFileSync(envPath, 'utf8') : ''
-  const pattern = new RegExp(`^${key}=.*`, 'm')
-  if (pattern.test(contents)) {
-    contents = contents.replace(pattern, `${key}=${value}`)
-  } else {
-    contents += (contents.endsWith('\n') || contents === '' ? '' : '\n') + `${key}=${value}\n`
-  }
-  writeFileSync(envPath, contents)
-}
-
-export function updateGitignore(cwd: string): void {
-  const gitignorePath = join(cwd, '.gitignore')
-  let contents = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : ''
-
-  if (!contents.includes('.seolful/')) {
-    contents += (contents.endsWith('\n') || contents === '' ? '' : '\n') + '\n# Seolful connector data\n.seolful/\n'
-    writeFileSync(gitignorePath, contents)
-  }
-}
+import { join } from 'node:path'
 
 /**
  * seolful.overrides.json holds published fixes and must be committed —
- * the Seolful GitHub App opens PRs against it. Deliberately NOT added to
- * .gitignore alongside .seolful/, which is local crawl cache only.
+ * the Seolful GitHub App opens PRs against it.
  */
 export function scaffoldOverridesFile(cwd: string): string | null {
   const overridesPath = join(cwd, 'seolful.overrides.json')
@@ -34,53 +11,6 @@ export function scaffoldOverridesFile(cwd: string): string | null {
 
   writeFileSync(overridesPath, JSON.stringify({}, null, 2) + '\n')
   return 'seolful.overrides.json'
-}
-
-export function scaffoldApiRoute(cwd: string): string {
-  const routeContent = `export { GET, POST } from '@seolful/nextjs-connector/api'
-`
-
-  // Detect src/ directory usage
-  const useSrc = existsSync(join(cwd, 'src', 'app'))
-  const appDir = useSrc ? join(cwd, 'src', 'app') : join(cwd, 'app')
-  const routeDir = join(appDir, 'api', 'seolful', 'v1', '[...path]')
-  const routePath = join(routeDir, 'route.ts')
-
-  if (!existsSync(routeDir)) {
-    mkdirSync(routeDir, { recursive: true })
-  }
-
-  writeFileSync(routePath, routeContent)
-
-  const relative = useSrc ? 'src/app/api/seolful/v1/[...path]/route.ts' : 'app/api/seolful/v1/[...path]/route.ts'
-  return relative
-}
-
-export function scaffoldInstrumentation(cwd: string): string | null {
-  const useSrc = existsSync(join(cwd, 'src', 'app'))
-  const baseDir = useSrc ? join(cwd, 'src') : cwd
-
-  // Don't clobber an existing instrumentation file (e.g. one set up for Sentry).
-  const alreadyExists = ['ts', 'js'].some((ext) => existsSync(join(baseDir, `instrumentation.${ext}`)))
-  if (alreadyExists) return null
-
-  const content = `export async function register() {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { ensureRegistered } = await import('@seolful/nextjs-connector')
-    await ensureRegistered()
-  }
-}
-`
-
-  writeFileSync(join(baseDir, 'instrumentation.ts'), content)
-
-  return useSrc ? 'src/instrumentation.ts' : 'instrumentation.ts'
-}
-
-export function putFile(filePath: string, content: string): void {
-  const dir = dirname(filePath)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  writeFileSync(filePath, content)
 }
 
 export function injectIntoLayout(cwd: string): string | null {

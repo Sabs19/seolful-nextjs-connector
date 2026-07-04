@@ -1,26 +1,5 @@
 // Types
-export type {
-  SeolfulConfig,
-  SeolfulConnection,
-  SeoPage,
-  SeoOverride,
-  SeoOverridesFile,
-  ImageAlt,
-  StorageAdapter,
-} from './types.js'
-
-export { getPageRole, getContentType } from './types.js'
-
-// Config
-export { getConfig, getStorageDir, clearConfigCache } from './config.js'
-
-// Storage
-export { getStorage, setStorage } from './storage/index.js'
-export { FileAdapter } from './storage/file-adapter.js'
-export { KvAdapter } from './storage/kv-adapter.js'
-
-// Auto-registration (called from the consumer's instrumentation.ts)
-export { ensureRegistered } from './auto-register.js'
+export type { SeoOverride, SeoOverridesFile, ImageAlt } from './types.js'
 
 // Helpers — user-facing
 export { getPageSeo } from './helpers/get-page-seo.js'
