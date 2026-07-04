@@ -47,6 +47,20 @@ function scaffoldRoute(cwd: string): void {
   console.log(`\n  seolful: created ${relative}\n`)
 }
 
+function warnIfNoRedisOnVercel(): void {
+  const onVercel = process.env.VERCEL === '1'
+  const hasRedis = Boolean(
+    (process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL) &&
+      (process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN)
+  )
+
+  if (onVercel && !hasRedis) {
+    console.log('\n  seolful: no Redis detected — crawled page data will be stored in /tmp,')
+    console.log('  seolful: which Vercel does not guarantee to persist between requests.')
+    console.log('  seolful: add a Redis integration (Vercel Marketplace → Upstash Redis) for reliable audits.\n')
+  }
+}
+
 const root = findProjectRoot()
 if (root && isNextJsProject(root)) {
   scaffoldRoute(root)
@@ -57,3 +71,5 @@ if (root && isNextJsProject(root)) {
     console.log('  seolful: on Next.js 13.4–14, add `experimental: { instrumentationHook: true }` to next.config.js\n')
   }
 }
+
+warnIfNoRedisOnVercel()

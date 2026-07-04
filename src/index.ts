@@ -15,6 +15,7 @@ export { getConfig, getStorageDir, clearConfigCache } from './config.js'
 // Storage
 export { getStorage, setStorage } from './storage/index.js'
 export { FileAdapter } from './storage/file-adapter.js'
+export { KvAdapter } from './storage/kv-adapter.js'
 
 // Auto-registration (called from the consumer's instrumentation.ts)
 export { ensureRegistered } from './auto-register.js'
