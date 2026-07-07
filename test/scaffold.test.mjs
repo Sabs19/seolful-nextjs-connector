@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { wireUpPages } from '../dist/cli/scaffold.js'
+import { wireUpPages, writeWiringManifest } from '../dist/cli/scaffold.js'
 
 // wireUpPages derives each page's route from its own file location and
 // mutates matching files in place — every test gets its own throwaway
@@ -167,6 +167,70 @@ test('is idempotent — running twice does not re-wire an already-wired page', (
     const second = wireUpPages(root)
     assert.deepEqual(second.wired, [])
     assert.deepEqual(second.skipped, ['src/app/(public)/about/page.tsx'])
+  })
+})
+
+test('reports existing_metadata in the manifest with the page\'s route, not its file path', () => {
+  withFixture({ 'src/app/(public)/blog/[slug]/page.tsx': HAS_GENERATE_METADATA_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(manifestEntries, [{ pathname: '/blog/${slug}', reason: 'existing_metadata' }])
+  })
+})
+
+test('reports client_component in the manifest', () => {
+  withFixture({ 'src/app/(public)/about/page.tsx': USE_CLIENT_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(manifestEntries, [{ pathname: '/about', reason: 'client_component' }])
+  })
+})
+
+test('reports unrecognized_shape in the manifest', () => {
+  withFixture({ 'src/app/(public)/pricing/page.tsx': NO_DEFAULT_FUNCTION_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(manifestEntries, [{ pathname: '/pricing', reason: 'unrecognized_shape' }])
+  })
+})
+
+test('does not report a page that already references the connector some other way', () => {
+  const content = `import { SeolfulSchema } from '@seolful/nextjs-connector'\n\nexport default function Page() {\n  return <SeolfulSchema pathname="/about" />\n}\n`
+  withFixture({ 'src/app/(public)/about/page.tsx': content }, (root) => {
+    const { skipped, manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(skipped, ['src/app/(public)/about/page.tsx'])
+    assert.deepEqual(manifestEntries, [])
+  })
+})
+
+test('omits unsupported route shapes from the manifest — no reliable pathname to report', () => {
+  withFixture({ 'src/app/(public)/shop/[...filters]/page.tsx': NO_METADATA_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(manifestEntries, [])
+  })
+})
+
+test('does not add a manifest entry for a page it successfully auto-wired', () => {
+  withFixture({ 'src/app/(public)/about/page.tsx': NO_METADATA_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+
+    assert.deepEqual(manifestEntries, [])
+  })
+})
+
+test('writeWiringManifest writes a committed JSON manifest with the skipped entries', () => {
+  withFixture({ 'src/app/(public)/blog/[slug]/page.tsx': HAS_GENERATE_METADATA_PAGE }, (root) => {
+    const { manifestEntries } = wireUpPages(root)
+    const manifestPath = writeWiringManifest(root, manifestEntries)
+
+    assert.equal(manifestPath, 'seolful.wiring.json')
+
+    const written = JSON.parse(readFileSync(join(root, 'seolful.wiring.json'), 'utf8'))
+    assert.equal(written.version, 1)
+    assert.equal(typeof written.generatedAt, 'string')
+    assert.deepEqual(written.skipped, [{ pathname: '/blog/${slug}', reason: 'existing_metadata' }])
   })
 })
 

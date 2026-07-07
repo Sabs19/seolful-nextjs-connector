@@ -198,10 +198,27 @@ function routeInfoForPageFile(absPath: string, appDir: string): RouteInfo {
   return { kind: 'route', pathname: '/' + segments.join('/'), dynamicParam }
 }
 
-function buildMetadataPatch(content: string, pathname: string, dynamicParam: string | null): string | null {
-  if (content.includes("'use client'") || content.includes('"use client"')) return null // server-only feature
-  if (content.includes('@seolful/nextjs-connector')) return null // already references the connector somehow
-  if (!/^export\s+default\s+(async\s+)?function/m.test(content)) return null // unrecognized shape
+export type SkipReason = 'existing_metadata' | 'client_component' | 'unrecognized_shape' | 'unsupported_route'
+
+export interface ManifestEntry {
+  pathname: string
+  reason: SkipReason
+}
+
+type PatchResult =
+  | { ok: true; content: string }
+  | { ok: false; reason: SkipReason | 'already_uses_connector' }
+
+function buildMetadataPatch(content: string, pathname: string, dynamicParam: string | null): PatchResult {
+  if (content.includes("'use client'") || content.includes('"use client"')) {
+    return { ok: false, reason: 'client_component' } // server-only feature
+  }
+  if (content.includes('@seolful/nextjs-connector')) {
+    return { ok: false, reason: 'already_uses_connector' } // already references the connector somehow
+  }
+  if (!/^export\s+default\s+(async\s+)?function/m.test(content)) {
+    return { ok: false, reason: 'unrecognized_shape' }
+  }
 
   const fn = dynamicParam
     ? `export async function generateMetadata({ params }: { params: Promise<{ ${dynamicParam}: string }> }) {
@@ -218,7 +235,7 @@ function buildMetadataPatch(content: string, pathname: string, dynamicParam: str
 
   const withImport = `import { withSeolfulMetadata } from '@seolful/nextjs-connector'\n` + content
 
-  return withImport.replace(/^export\s+default\s+(async\s+)?function/m, fn + '$&')
+  return { ok: true, content: withImport.replace(/^export\s+default\s+(async\s+)?function/m, fn + '$&') }
 }
 
 /**
@@ -231,14 +248,19 @@ function buildMetadataPatch(content: string, pathname: string, dynamicParam: str
  * which pages still need manual setup, rather than leaving them to
  * discover it later after a fix sits unconfirmed for several minutes.
  */
-export function wireUpPages(cwd: string): { wired: string[]; skipped: string[] } {
+export function wireUpPages(cwd: string): { wired: string[]; skipped: string[]; manifestEntries: ManifestEntry[] } {
   const useSrc = existsSync(join(cwd, 'src', 'app'))
   const appDir = useSrc ? join(cwd, 'src', 'app') : join(cwd, 'app')
 
-  if (!existsSync(appDir)) return { wired: [], skipped: [] }
+  if (!existsSync(appDir)) return { wired: [], skipped: [], manifestEntries: [] }
 
   const wired: string[] = []
   const skipped: string[] = []
+  // Pages left unwired that a route (pathname) is actually known for — the
+  // only ones the backend can ever match back to an audited URL. Skipped
+  // pages with no reliable pathname (unsupported route shapes) still print
+  // in the console for a human, but can't go in the manifest.
+  const manifestEntries: ManifestEntry[] = []
 
   for (const filePath of walkForPageFiles(appDir)) {
     const relativePath = (useSrc ? 'src/app/' : 'app/') + relative(appDir, filePath).split(sep).join('/')
@@ -257,18 +279,43 @@ export function wireUpPages(cwd: string): { wired: string[]; skipped: string[] }
 
     if (hasExistingMetadata(content)) {
       skipped.push(relativePath)
+      manifestEntries.push({ pathname: route.pathname, reason: 'existing_metadata' })
       continue
     }
 
     const patched = buildMetadataPatch(content, route.pathname, route.dynamicParam)
-    if (!patched) {
+    if (!patched.ok) {
       skipped.push(relativePath)
+      // A page that already references the connector somehow (but not via a
+      // metadata export) was left alone deliberately, not because of a gap —
+      // nothing to flag to the backend for it.
+      if (patched.reason !== 'already_uses_connector') {
+        manifestEntries.push({ pathname: route.pathname, reason: patched.reason })
+      }
       continue
     }
 
-    writeFileSync(filePath, patched)
+    writeFileSync(filePath, patched.content)
     wired.push(relativePath)
   }
 
-  return { wired, skipped }
+  return { wired, skipped, manifestEntries }
+}
+
+/**
+ * Written to the repo root and committed alongside seolful.overrides.json.
+ * Lets the backend know exactly which pages need a developer's manual setup
+ * the moment the GitHub repo is connected — a single cheap file read instead
+ * of crawling the repo tree and guessing with regex after a fix has already
+ * failed to show up live.
+ */
+export function writeWiringManifest(cwd: string, manifestEntries: ManifestEntry[]): string {
+  const manifestPath = join(cwd, 'seolful.wiring.json')
+
+  writeFileSync(
+    manifestPath,
+    JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), skipped: manifestEntries }, null, 2) + '\n',
+  )
+
+  return 'seolful.wiring.json'
 }

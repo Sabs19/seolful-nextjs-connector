@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { scaffoldOverridesFile, injectIntoLayout, wireUpPages } from './scaffold.js'
+import { scaffoldOverridesFile, injectIntoLayout, wireUpPages, writeWiringManifest } from './scaffold.js'
 
 function isNextJsProject(cwd: string): boolean {
   const pkgPath = join(cwd, 'package.json')
@@ -42,7 +42,7 @@ export function init(): void {
     console.log('    import { withSeolfulMetadata } from \'@seolful/nextjs-connector\'')
   }
 
-  const { wired, skipped } = wireUpPages(cwd)
+  const { wired, skipped, manifestEntries } = wireUpPages(cwd)
 
   console.log()
   if (wired.length > 0) {
@@ -57,6 +57,13 @@ export function init(): void {
   if (wired.length === 0 && skipped.length === 0) {
     console.log('  No additional pages found under app/ to wire up.')
   }
+
+  // Reported to Seolful once the GitHub repo is connected — lets the
+  // dashboard flag a page needing a developer immediately, instead of only
+  // after a published fix fails to show up live.
+  const manifestPath = writeWiringManifest(cwd, manifestEntries)
+  console.log()
+  console.log(`  ✔ ${manifestPath} written — commit this file too, so Seolful knows which pages need manual setup as soon as your repo is connected`)
 
   console.log()
   console.log('  No connection key needed — add this site from your Seolful dashboard by URL.')

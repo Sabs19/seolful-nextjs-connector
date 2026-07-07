@@ -18,10 +18,11 @@ Run once, from your project root. This:
 - creates `seolful.overrides.json` (empty `{}`) if it doesn't exist yet — **commit this file**, it's what the Seolful GitHub App opens pull requests against
 - tries to auto-wire `withSeolfulMetadata` into your root layout's metadata
 - scans `app/` for other pages with no metadata setup at all (no `generateMetadata`, no static `metadata` export) and wires those up too, deriving each page's route straight from its own file location
+- writes `seolful.wiring.json`, a manifest of exactly which pages it couldn't auto-wire and why — **commit this file too**
 
-A page that already has its own `generateMetadata` (or a re-exported one), a client component, or a route this can't confidently pattern-match (catch-all segments, more than one dynamic segment) is left untouched — `init` prints exactly which pages fall into that bucket so you know what needs the manual setup below, rather than finding out later when a published fix doesn't show up.
+A page that already has its own `generateMetadata` (or a re-exported one), a client component, or a route this can't confidently pattern-match (catch-all segments, more than one dynamic segment) is left untouched — `init` prints exactly which pages fall into that bucket so you know what needs the manual setup below, rather than finding out later when a published fix doesn't show up. Once your GitHub repo is connected from Site Settings, Seolful reads `seolful.wiring.json` to flag those same pages on your dashboard immediately, instead of only after a published fix fails to appear live.
 
-Commit the result and deploy.
+Commit the result and deploy. If you add new pages later, re-run `npx @seolful/nextjs-connector init` to wire those up too and refresh the manifest.
 
 ## Update
 
