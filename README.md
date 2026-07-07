@@ -9,11 +9,12 @@ This package's only job is what happens *after* that: reading `seolful.overrides
 
 ## Install
 
-```
+```bash
 npx @seolful/nextjs-connector init
 ```
 
 Run once, from your project root. This:
+
 - creates `seolful.overrides.json` (empty `{}`) if it doesn't exist yet — **commit this file**, it's what the Seolful GitHub App opens pull requests against
 - tries to auto-wire `withSeolfulMetadata` into your root layout's metadata
 - scans `app/` for other pages with no metadata setup at all (no `generateMetadata`, no static `metadata` export) and wires those up too, deriving each page's route straight from its own file location
@@ -24,14 +25,14 @@ Commit the result and deploy.
 
 ## Update
 
-```
+```bash
 npm install @seolful/nextjs-connector@latest
 ```
 
 ## What it exports
 
 | Export | Applies |
-|---|---|
+| --- | --- |
 | `withSeolfulMetadata(pathname, baseMetadata)` | Title / meta description overrides, merged into a page's `generateMetadata` result |
 | `<SeolfulSchema pathname="..." />` | Structured data (JSON-LD) fixes, rendered as `<script type="application/ld+json">` |
 | `<SeolfulH1 pathname="..." isSecondary>` | Demotes a duplicate H1 to `<h2>` when a "Duplicate H1 Tag" fix has been published |
