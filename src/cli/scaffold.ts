@@ -112,6 +112,16 @@ function isNonPublicSegment(segment: string): boolean {
   return bare.toLowerCase() === 'admin' || bare.toLowerCase() === 'protected'
 }
 
+/**
+ * A parallel-route slot (`@modal`, `@analytics`, ...) doesn't correspond to
+ * a real URL segment at all — a page under one isn't a normal page the way
+ * audit fixes ever target, so it's excluded from the walk entirely rather
+ * than reported as needing setup.
+ */
+function isParallelRouteSegment(segment: string): boolean {
+  return segment.startsWith('@')
+}
+
 function walkForPageFiles(dir: string): string[] {
   const found: string[] = []
 
@@ -122,7 +132,7 @@ function walkForPageFiles(dir: string): string[] {
     const stat = statSync(full)
 
     if (stat.isDirectory()) {
-      if (isNonPublicSegment(entry)) continue
+      if (isNonPublicSegment(entry) || isParallelRouteSegment(entry)) continue
       found.push(...walkForPageFiles(full))
     } else if (PAGE_EXTENSIONS.some((ext) => entry === `page.${ext}`)) {
       found.push(full)
@@ -164,6 +174,14 @@ function routeInfoForPageFile(absPath: string, appDir: string): RouteInfo {
   const segments: string[] = []
 
   for (const part of routeParts) {
+    // Intercepting-route markers ((.)segment, (..)segment, (...)segment) are
+    // parenthesized like a route group but aren't invisible the way a group
+    // is — they change what route the file actually serves. Distinguishable
+    // from a plain group because the paren is immediately followed by a dot,
+    // which no ordinary group name would start with. Too easy to derive the
+    // wrong pathname here, so this bails rather than guessing.
+    if (/^\(\.+\)/.test(part)) return { kind: 'unsupported' }
+
     const catchAll = part.match(/^\[\.\.\.[a-zA-Z0-9_]+\]$/) || part.match(/^\[\[\.\.\.[a-zA-Z0-9_]+\]\]$/)
     if (catchAll) return { kind: 'unsupported' }
 
