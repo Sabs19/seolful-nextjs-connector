@@ -1,6 +1,6 @@
 {
   "name": "@seolful/nextjs-connector",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Seolful metadata injection helpers for Next.js — reads seolful.overrides.json (published via the Seolful GitHub App) into generateMetadata, image alt text, structured data, and H1 tags. No API routes, no auth, no site-side crawling — auditing happens externally from the Seolful app.",
   "type": "module",
   "main": "./dist/index.js",

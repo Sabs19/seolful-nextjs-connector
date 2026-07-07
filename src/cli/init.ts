@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { scaffoldOverridesFile, injectIntoLayout } from './scaffold.js'
+import { scaffoldOverridesFile, injectIntoLayout, wireUpPages } from './scaffold.js'
 
 function isNextJsProject(cwd: string): boolean {
   const pkgPath = join(cwd, 'package.json')
@@ -40,6 +40,22 @@ export function init(): void {
     console.log('  Note: could not auto-modify your root layout.')
     console.log('  Add this to your layout.tsx generateMetadata:')
     console.log('    import { withSeolfulMetadata } from \'@seolful/nextjs-connector\'')
+  }
+
+  const { wired, skipped } = wireUpPages(cwd)
+
+  console.log()
+  if (wired.length > 0) {
+    console.log(`  ✔ ${wired.length} page${wired.length === 1 ? '' : 's'} wired up automatically:`)
+    for (const path of wired) console.log(`      ${path}`)
+  }
+  if (skipped.length > 0) {
+    console.log(`  ${skipped.length} page${skipped.length === 1 ? '' : 's'} need manual setup (already have their own metadata, or a route shape this can't auto-wire):`)
+    for (const path of skipped) console.log(`      ${path}`)
+    console.log('  See the README for how to add withSeolfulMetadata/SeolfulSchema/SeolfulH1/SeolfulImage to these.')
+  }
+  if (wired.length === 0 && skipped.length === 0) {
+    console.log('  No additional pages found under app/ to wire up.')
   }
 
   console.log()

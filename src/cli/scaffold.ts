@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { join, relative, sep } from 'node:path'
 
 /**
  * seolful.overrides.json holds published fixes and must be committed —
@@ -87,4 +87,170 @@ export async function generateMetadata({ params }: { params: Promise<Record<stri
   }
 
   return null
+}
+
+const PAGE_EXTENSIONS = ['tsx', 'ts', 'jsx', 'js']
+
+/**
+ * Same three checks as the backend's page-wiring detector, kept in sync by
+ * hand since it's a different language — a static/dynamic metadata export
+ * already covers the page; a false negative here would wrongly add a
+ * duplicate that Next.js itself forbids (a file can't have both `metadata`
+ * and `generateMetadata`), so this is intentionally biased toward assuming
+ * metadata exists rather than missing it.
+ */
+function hasExistingMetadata(content: string): boolean {
+  return (
+    /\bgenerateMetadata\b/.test(content) ||
+    /export\s+const\s+metadata\b/.test(content) ||
+    /export\s*\{[^}]*\bmetadata\b[^}]*\}\s*from/.test(content)
+  )
+}
+
+function isNonPublicSegment(segment: string): boolean {
+  const bare = segment.replace(/^\(|\)$/g, '')
+  return bare.toLowerCase() === 'admin' || bare.toLowerCase() === 'protected'
+}
+
+function walkForPageFiles(dir: string): string[] {
+  const found: string[] = []
+
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry.startsWith('.')) continue
+
+    const full = join(dir, entry)
+    const stat = statSync(full)
+
+    if (stat.isDirectory()) {
+      if (isNonPublicSegment(entry)) continue
+      found.push(...walkForPageFiles(full))
+    } else if (PAGE_EXTENSIONS.some((ext) => entry === `page.${ext}`)) {
+      found.push(full)
+    }
+  }
+
+  return found
+}
+
+/**
+ * Derives the route this file serves from its own location — no guessing
+ * involved, unlike matching a URL back to a file. Bails (returns null) on
+ * anything outside the narrow shape this can safely patch: a catch-all
+ * segment, more than one dynamic segment, or the homepage itself (already
+ * covered by the root layout's own generateMetadata).
+ */
+type RouteInfo =
+  | { kind: 'homepage' }
+  | { kind: 'unsupported' }
+  | { kind: 'route'; pathname: string; dynamicParam: string | null }
+
+/**
+ * The homepage is genuinely nothing to report — the layout already covers
+ * it. A catch-all or multi-dynamic route is different: it's a real gap, we
+ * just can't confidently derive its pattern, so it must still come back as
+ * "needs manual setup" rather than disappearing silently the way the
+ * homepage does.
+ */
+function routeInfoForPageFile(absPath: string, appDir: string): RouteInfo {
+  const rel = relative(appDir, absPath)
+  const parts = rel.split(sep)
+  parts.pop() // drop page.{ext} itself
+
+  const routeParts = parts.filter((p) => !/^\(.+\)$/.test(p))
+
+  if (routeParts.length === 0) return { kind: 'homepage' }
+
+  let dynamicParam: string | null = null
+  const segments: string[] = []
+
+  for (const part of routeParts) {
+    const catchAll = part.match(/^\[\.\.\.[a-zA-Z0-9_]+\]$/) || part.match(/^\[\[\.\.\.[a-zA-Z0-9_]+\]\]$/)
+    if (catchAll) return { kind: 'unsupported' }
+
+    const dynamic = part.match(/^\[([a-zA-Z0-9_]+)\]$/)
+    if (dynamic) {
+      if (dynamicParam) return { kind: 'unsupported' } // more than one dynamic segment
+      dynamicParam = dynamic[1]
+      segments.push(`\${${dynamicParam}}`)
+    } else {
+      segments.push(part)
+    }
+  }
+
+  return { kind: 'route', pathname: '/' + segments.join('/'), dynamicParam }
+}
+
+function buildMetadataPatch(content: string, pathname: string, dynamicParam: string | null): string | null {
+  if (content.includes("'use client'") || content.includes('"use client"')) return null // server-only feature
+  if (content.includes('@seolful/nextjs-connector')) return null // already references the connector somehow
+  if (!/^export\s+default\s+(async\s+)?function/m.test(content)) return null // unrecognized shape
+
+  const fn = dynamicParam
+    ? `export async function generateMetadata({ params }: { params: Promise<{ ${dynamicParam}: string }> }) {
+  const { ${dynamicParam} } = await params
+  return withSeolfulMetadata(\`${pathname}\`, {})
+}
+
+`
+    : `export async function generateMetadata() {
+  return withSeolfulMetadata('${pathname}', {})
+}
+
+`
+
+  const withImport = `import { withSeolfulMetadata } from '@seolful/nextjs-connector'\n` + content
+
+  return withImport.replace(/^export\s+default\s+(async\s+)?function/m, fn + '$&')
+}
+
+/**
+ * Wires up every page that has no metadata setup at all — the same narrow
+ * "recognize the safe shape or bail" pattern injectIntoLayout already uses
+ * for the root layout, applied to individual page files. A page that
+ * already has its own metadata logic is left alone entirely; so is anything
+ * with a catch-all route, more than one dynamic segment, or a client
+ * component — those are reported back so `init` can tell the user exactly
+ * which pages still need manual setup, rather than leaving them to
+ * discover it later after a fix sits unconfirmed for several minutes.
+ */
+export function wireUpPages(cwd: string): { wired: string[]; skipped: string[] } {
+  const useSrc = existsSync(join(cwd, 'src', 'app'))
+  const appDir = useSrc ? join(cwd, 'src', 'app') : join(cwd, 'app')
+
+  if (!existsSync(appDir)) return { wired: [], skipped: [] }
+
+  const wired: string[] = []
+  const skipped: string[] = []
+
+  for (const filePath of walkForPageFiles(appDir)) {
+    const relativePath = (useSrc ? 'src/app/' : 'app/') + relative(appDir, filePath).split(sep).join('/')
+    const route = routeInfoForPageFile(filePath, appDir)
+
+    if (route.kind === 'homepage') {
+      continue // nothing to report — the root layout already covers it
+    }
+
+    if (route.kind === 'unsupported') {
+      skipped.push(relativePath) // real gap, just too complex a route shape to confidently auto-wire
+      continue
+    }
+
+    const content = readFileSync(filePath, 'utf8')
+
+    if (hasExistingMetadata(content)) {
+      skipped.push(relativePath)
+      continue
+    }
+
+    const patched = buildMetadataPatch(content, route.pathname, route.dynamicParam)
+    if (!patched) {
+      skipped.push(relativePath)
+      continue
+    }
+
+    writeFileSync(filePath, patched)
+    wired.push(relativePath)
+  }
+
+  return { wired, skipped }
 }
